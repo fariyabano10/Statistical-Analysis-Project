@@ -1,0 +1,634 @@
+---
+title: "LSM Project"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE, echo = TRUE)
+options(dplyr.summarise.inform = FALSE)
+```
+```{r}
+library(tidyverse)
+library(dplyr)
+library(readxl)
+library(repr)
+library(gridExtra)
+```
+
+```{r}
+age_data<- read_excel("Project data.xlsx", 
+    sheet = "1", col_names = c("Age","2014","2015","2016","2017","2018","2019","2020","2021"), col_types = c("text", 
+        "skip", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric"), skip = 7, 
+    n_max = 8)
+age_data = age_data[-1,]
+
+sex_data<- read_excel("Project data.xlsx", 
+    sheet = "1", col_names = c("Sex","2014","2015","2016","2017","2018","2019","2020","2021"), col_types = c("text", 
+        "skip", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric"), skip = 15, 
+    n_max = 4)
+sex_data = sex_data[-1,]
+
+ethnic_data <- read_excel("Project data.xlsx", 
+    sheet = "4", col_names = c("Ethnicity","2014","2015","2016","2017","2018","2019","2020","2021"), col_types = c("text", 
+        "skip", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric"), skip = 5)
+
+eco_data <- read_excel("Project data.xlsx", 
+    sheet = "5", col_names = c("Activity","2014","2015","2016","2017","2018","2019","2020","2021"), col_types = c("text", 
+        "skip", "numeric", "numeric", "numeric", 
+        "numeric", "numeric", "numeric", 
+        "numeric", "numeric"), skip = 4, 
+    n_max = 9)
+```
+```{r}
+disability_data <- read_excel("Project data.xlsx", 
+    sheet = "3", col_names = c("AgeGroup","Disability","2017","2018","2019","2020","2021"), col_types = c("text", 
+        "text", "skip", "numeric", "numeric", 
+        "numeric", "numeric", "numeric"), 
+    skip = 6, n_max = 16)
+```
+```{r}
+age_sex <- read_excel("Project data.xlsx", 
+    sheet = "2", col_names = c("AgeGroup","Sex","2014","2015","2016","2017","2018","2019","2020","2021"), skip = 5)
+
+```
+```{r}
+age_groups <- as.vector(age_data[,1])
+sex<- as.vector(sex_data[,1])
+#Data_byage <- Data_byage %>% remove_rownames %>% column_to_rownames(var="Age")
+#Data_bysex <- Data_bysex %>% remove_rownames %>% column_to_rownames(var="Sex")
+#by_ethnicity <- by_ethnicity %>% remove_rownames %>% column_to_rownames(var="Ethnicity")
+#eco_activity <- eco_activity %>% remove_rownames %>% column_to_rownames(var="Activity")
+```
+
+1. Age Data
+
+```{r}
+age_data %>% summary(Age)
+
+age_pivot <- age_data %>% pivot_longer(-Age,names_to = "Years", values_to = "Count")
+age_pivot %>% summary()
+```
+Visualizing the age_data
+
+```{r}
+p <- ggplot(age_pivot,aes(x=Years,y = Count,fill= Age)) + geom_col(position = "dodge2") + labs(x="Years", y= "Number of Users", fill = "Age")+
+  theme(legend.position = "top")
+ggsave("age_data.png", p, width = 15, height = 10)
+p
+```
+```{r}
+p <- ggplot(age_pivot,aes(x=Years,y = Count,fill= Age)) + geom_col(position = "dodge2") + labs(x="Years", y= "Number of Users", fill = "Age")+ facet_wrap(~Age) +
+  theme(legend.position = "top")
+ggsave("age_data_grouped.png", p, width = 15, height = 10)
+p
+```
+
+
+Boxplot for same data
+
+```{r}
+p1 <- ggplot(age_pivot,aes(x = Age, y = Count)) + geom_boxplot() + labs(x=NULL) + coord_flip()+theme(legend.position = "top")
+ggsave("age_boxplot.png", p1, width = 15, height = 10)
+p1
+```
+
+
+
+
+
+
+
+```{r}
+age_data %>% select(`2014`,`2015`,`2016`,`2017`,`2018`,`2019`,`2020`,`2021`) %>% rowSums()
+
+years <- c("2014","2015","2016","2017","2018","2019","2020","2021")
+age_mean <- age_data %>% mutate(mean_users = rowMeans(.[, years]))
+
+#df1 <- pivotted %>% group_by(Age) %>% mutate(mean_users = mean(Count))
+age_mean <- age_mean %>% select(Age,mean_users)
+```
+
+Pie Chart for Mean Value
+```{r}
+pie <- ggplot(age_mean, aes(x="", y=mean_users, fill=Age)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average Internet Usage by Age Groups") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("age_pie.png", pie, width = 15, height = 10)
+pie
+```
+
+
+Anova test for Data by Age
+```{r}
+#t.test(data = df1, mean_users ~ Age)
+age_aov <- aov(Count ~ Age, data = age_pivot)
+summary(age_aov)
+```
+Splitting Data by Age Groups
+
+```{r}
+age_groups
+age_data1 <- age_data %>% filter(Age == "16-24") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+age_data2 <- age_data %>% filter(Age == "25-34") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+age_data3 <- age_data %>% filter(Age == "35-44") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+age_data4 <- age_data %>% filter(Age == "45-54") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+age_data5 <- age_data %>% filter(Age == "55-64") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+age_data6 <- age_data %>% filter(Age == "65-74") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+age_data7 <- age_data %>% filter(Age == "75+") %>% pivot_longer(-Age, names_to = "Years", values_to = "Users")
+
+age_data1
+age_data2
+```
+Age Group 1: 16 -24
+Applying Linear Regression
+
+```{r}
+age_data1_lm <- lm(Years ~ Users, data=age_data1)
+summary(age_data1_lm)
+
+```
+
+
+```{r}
+#var(age_data1$)
+```
+
+
+
+Age Group 2: 25-34
+Applying Linear Regression
+
+```{r}
+age_data2_lm <- lm(Years ~ Users, data=age_data2)
+summary(age_data2_lm)
+```
+Age Group 3: 35-44
+Applying Linear Regression
+
+```{r}
+age_data3_lm <- lm(Years ~ Users, data=age_data3)
+summary(age_data3_lm)
+```
+Age Group 4: 45-54
+Applying Linear Regression
+
+```{r}
+age_data4_lm <- lm(Years ~ Users, data=age_data4)
+summary(age_data4_lm)
+```
+Age Group 5: 55-64
+Applying Linear Regression
+
+```{r}
+age_data5_lm <- lm(Years ~ Users, data=age_data5)
+summary(age_data5_lm)
+```
+Age Group 6: 65-74
+Applying Linear Regression
+
+```{r}
+age_data6_lm <- lm(Years ~ Users, data=age_data6)
+summary(age_data6_lm)
+```
+Age Group 7: 75+
+Applying Linear Regression
+
+```{r}
+age_data7_lm <- lm(Years ~ Users, data=age_data7)
+summary(age_data7_lm)
+```
+```{r}
+age_lm <- lm(formula = Count ~ Age, data = age_pivot)
+summary(age_lm)
+```
+
+
+2. Sex Data
+Data on the basis of Sex has exactly 2 levels, hence we can use t-test
+
+```{r}
+sex_pivot <- sex_data %>% pivot_longer(-Sex, names_to = "Years", values_to = "no_of_users")
+sex_pivot
+```
+
+```{r}
+p <- ggplot(sex_pivot,aes(x=Years, y = no_of_users,fill = Sex)) + geom_col(position = "dodge2") + labs(x="Years", y= "Number of Users", fill = "Sex")+
+  theme(legend.position = "top")
+ggsave("sex_data.png", p, width = 15, height = 10)
+p
+```
+```{r}
+p <- ggplot(sex_pivot,aes(x=Years, y = no_of_users,fill = Sex)) + geom_col(position = "dodge2") + labs(x="Years", y= "Number of Users", fill = "Sex")+ facet_wrap(~Sex) +
+  theme(legend.position = "top")
+ggsave("sex_data_grouped.png", p, width = 15, height = 10)
+p
+```
+
+
+
+```{r}
+sex_groups <- c("Male","Female")
+sex_mean <- sex_data %>% mutate(mean_users = rowMeans(.[, years]))
+sex_mean <- sex_mean %>% select(Sex, mean_users)
+#df2 <- df2 %>% select(Sex,m)
+```
+
+```{r}
+pie <- ggplot(sex_mean, aes(x="", y=mean_users, fill=Sex)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average Internet Usage by Sexes") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("sex_pie.png",pie, width = 15, height = 10)
+pie
+```
+
+
+```{r}
+t.test(data = sex_pivot, no_of_users ~ Sex)
+
+```
+
+```{r}
+sex_anova <- aov(no_of_users ~ Sex, data = sex_pivot)
+summary(sex_anova)
+```
+
+
+
+
+3. Ethnicity Data
+
+```{r}
+ethnic_pivot <- ethnic_data %>% pivot_longer(-Ethnicity,names_to = "Years", values_to = "Users")
+ethnic_pivot
+```
+Visualizing Ethnic Data
+```{r}
+options(repr.plot.width = 20, repr.plot.height = 12)
+e <- ggplot(ethnic_pivot,aes(x=Years, y = Users, fill =Ethnicity)) + geom_col(position = "dodge2") + labs(x="Years", y = "No of Users", fill = "Ethnic groups") + theme(legend.position = "top")
+#options(repr.e.width=10,repr.e.height=8)
+ggsave("ethnic_data.png", e, width = 15, height = 10)
+e
+```
+Mean of Ethnic Data
+
+```{r}
+ethnic_mean <- ethnic_data %>% mutate(mean_users = rowMeans(.[, years]))
+ethnic_mean <- ethnic_mean %>% select(Ethnicity, mean_users)
+```
+
+
+Pie Chart
+
+```{r}
+pie <- ggplot(ethnic_mean, aes(x="", y=mean_users, fill=Ethnicity)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average Internet Usage by Ethnicity") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("ethnic_pie.png",pie, width = 15, height = 10)
+pie
+```
+Removing "White" Ethnic group
+```{r}
+ethnic_other <- ethnic_pivot %>% filter(!Ethnicity=="White")
+ethnic_other_mean <- ethnic_mean %>% filter(!Ethnicity=="White")
+```
+
+```{r}
+e <- ggplot(ethnic_other,aes(x=Years, y = Users, fill =Ethnicity)) + geom_col(position = "dodge2") + labs(x="Years", y = "No of Users", fill = "Ethnic groups") + theme(legend.position = "top")
+ggsave("ethnic_other.png", e, width = 15, height = 10)
+e
+```
+Pie Chart of ethnic_other
+
+```{r}
+pie <- ggplot(ethnic_other_mean, aes(x="", y=mean_users, fill=Ethnicity)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average Internet Usage by Ethnicity") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("ethnic_other_pie.png", pie, width = 15, height = 10)
+pie
+```
+Anova Test
+
+```{r}
+ethnic_aov <- aov(Users ~ Ethnicity, data = ethnic_other)
+summary(ethnic_aov)
+```
+
+Studying Linear Regression in White Ethnicity
+
+```{r}
+ethnic_white <- ethnic_data %>% filter(Ethnicity == "White") %>% pivot_longer(-Ethnicity, names_to = "Years", values_to = "Users")
+ethnic_white_lm <- lm(Years ~ Users, data = ethnic_white)
+summary(ethnic_white_lm)
+```
+```{r}
+ethnic_lm <- lm(formula = Users ~ Ethnicity, data = ethnic_pivot)
+summary(ethnic_lm)
+```
+
+4. Economic Activity Data
+
+```{r}
+eco_pivot <- eco_data %>% pivot_longer(-Activity, names_to = "Years", values_to = "Users")
+#eco_pivot
+
+eco_mean <- eco_data %>% mutate(mean_users = rowMeans(.[, years]))
+eco_mean <- eco_mean %>% select(Activity,mean_users)
+eco_mean
+```
+visualizing data
+
+```{r}
+eco <- ggplot(eco_pivot,aes(x=Years, y = Users, fill = Activity)) + geom_col(position = "dodge2") + labs(x="Years", y = "No of Users", fill = "Economic Activity") + theme(legend.position = "top")
+ggsave("eco_data.png", eco, width = 15, height = 10)
+eco
+```
+
+Removing employee group
+```{r}
+eco_other <- eco_pivot %>% filter(!Activity=="Employee")
+eco_other_mean <- eco_mean %>% filter(!Activity=="Employee")
+```
+
+Visualizing without Employee
+
+```{r}
+pie <- ggplot(eco_other_mean, aes(x="", y=mean_users, fill=Activity)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average Internet Usage by Ethnicity") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("ethnic_other_pie.png", pie, width = 15, height = 10)
+pie
+```
+
+```{r}
+eco <- ggplot(eco_other,aes(x=Years, y = Users, fill = Activity)) + geom_col(position = "dodge2") + labs(x="Years", y = "No of Users", fill = "Economic Activity") + theme(legend.position = "top")
+ggsave("eco_other.png", eco, width = 15, height = 10)
+eco
+```
+ANOVA TEST
+
+```{r}
+eco_aov <- aov(Users ~ Activity, data = eco_other)
+summary(eco_aov)
+```
+Linear Regression for Employee Group
+
+```{r}
+eco_emp <- eco_data %>% filter(Activity == "Employee") %>% pivot_longer(-Activity, names_to = "Years", values_to = "Users")
+eco_emp_lm <- lm(Years ~ Users, data = eco_emp)
+summary(eco_emp_lm)
+```
+```{r}
+layout(matrix(c(1,1,2,3),2,2,byrow=T))
+#Spend x Residuals Plot
+plot(eco_emp_lm$resid~eco_emp$Users[order(eco_emp$Users)],
+ main="Spend x Residuals\nfor Simple Regression",
+ xlab="Marketing Spend", ylab="Residuals")
+abline(h=0,lty=2)
+#Histogram of Residuals
+hist(eco_emp_lm$resid, main="Histogram of Residuals",
+ ylab="Residuals")
+#Q-Q Plot
+qqnorm(eco_emp_lm$resid)
+qqline(eco_emp_lm$resid)
+```
+Linear Regression for Self Employed
+```{r}
+eco_2 <- eco_data %>% filter(Activity == "Self-employed") %>% pivot_longer(-Activity, names_to = "Years", values_to = "Users")
+eco_2_lm <- lm(Years ~ Users, data = eco_2)
+summary(eco_2_lm)
+```
+
+Retired
+```{r}
+eco_3 <- eco_data %>% filter(Activity == "Retired") %>% pivot_longer(-Activity, names_to = "Years", values_to = "Users")
+eco_3_lm <- lm(Years ~ Users, data = eco_3)
+summary(eco_3_lm)
+```
+Student
+```{r}
+eco_4 <- eco_data %>% filter(Activity == "Student") %>% pivot_longer(-Activity, names_to = "Years", values_to = "Users")
+eco_4_lm <- lm(Years ~ Users, data = eco_4)
+summary(eco_4_lm)
+```
+Inactive
+```{r}
+eco_5 <- eco_data %>% filter(Activity == "Inactive") %>% pivot_longer(-Activity, names_to = "Years", values_to = "Users")
+eco_5_lm <- lm(Years ~ Users, data = eco_5)
+summary(eco_5_lm)
+```
+
+
+
+5. Disability Data
+
+```{r}
+all_disability <- disability_data[1:2,] %>% select(!AgeGroup)
+all_disability
+
+disability_age <- tail(disability_data,-2)
+disability_age
+```
+```{r}
+all_dis_pivot <- all_disability %>% pivot_longer(-Disability,names_to = "Years", values_to = "Users")
+all_dis_pivot
+```
+```{r}
+disability <- as.vector(all_dis_pivot$Disability)
+
+p<- ggplot(all_dis_pivot,aes(x=Years,y=Users,fill=disability)) + geom_col(position = "dodge2") + labs(x="Years", y = "No of Users", fill = "Disability Category") + theme(legend.position = "top")
+ggsave("dis_all.png", p, width = 15, height = 10)
+p
+```
+```{r}
+dis_pivot <- disability_age %>% filter(Disability=="Equality Act Disabled") %>% select(!Disability) %>% pivot_longer(-AgeGroup, names_to= "Years", values_to = "Users")
+dis_pivot
+
+dis_non_pivot <- disability_age %>% filter(Disability == "Not Equality Act Disabled") %>% select(!Disability) %>%
+  pivot_longer(-AgeGroup, names_to = "Years", values_to = "Users")
+dis_non_pivot
+```
+```{r}
+yes<- ggplot(dis_pivot,aes(x=Years,y=Users,fill=AgeGroup)) +geom_col(position="dodge2") + labs(title="Disabled Users",x="Years", y = "No of Users", fill = "Age Group") + theme(legend.position = "top")
+no <- ggplot(dis_non_pivot,aes(x=Years,y=Users,fill=AgeGroup)) +geom_col(position="dodge2") + labs(title = "Non Disabled Users",x="Years", y = "No of Users", fill = "Age Group") + theme(legend.position = "top")
+
+yes
+no
+```
+Mean Data
+
+```{r}
+years2 <- c("2017","2018","2019","2020","2021")
+dis_mean <- disability_age %>% filter(Disability=="Equality Act Disabled") %>% 
+  select(!Disability) %>% mutate(mean_users = rowMeans(.[, years2]))
+dis_mean <- dis_mean %>% select(AgeGroup,mean_users)
+dis_mean
+
+
+dis_non_mean <- disability_age %>% filter(Disability == "Not Equality Act Disabled") %>% 
+  select(!Disability) %>% mutate(mean_users = rowMeans(.[,years2]))
+dis_non_mean <- dis_non_mean %>% select(AgeGroup, mean_users)
+dis_non_mean
+
+dis_both_mean <- disability_age %>% mutate(mean_users = rowMeans(.[,years2])) %>% select(AgeGroup,Disability,mean_users)
+dis_both_mean
+```
+PI Charts for both
+
+```{r}
+pie1 <- ggplot(dis_mean, aes(x="", y=mean_users, fill=AgeGroup)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average Disabled Users by Age Group") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("dis_mean_pie.png", pie1, width = 15, height = 10)
+pie1
+
+
+pie2 <- ggplot(dis_non_mean, aes(x="", y=mean_users, fill=AgeGroup)) +
+  geom_bar(stat="identity", width=1, color="white") + labs(title = "Average non Disabled Users by Age Group") +
+  coord_polar("y", start=0) + theme_void()
+ggsave("dis_non_mean_pie.png", pie2, width = 15, height = 10)
+pie2
+```
+
+
+
+
+Boxplot
+```{r}
+dis_pivot <- gather(disability_age, "Years", "Users", 3:7 )
+dis <- ggplot(dis_pivot,aes(x=Users, y = AgeGroup, fill=Disability)) + geom_boxplot() + 
+  labs(x=NULL) + theme(legend.position = "top")
+ggsave("dis_box.png", dis, width = 15, height = 10)
+dis
+```
+
+```{r}
+t.test(data = all_dis_pivot, Users ~ Disability)
+
+#dis_t <- t.test(Users ~ Disability, data = dis_pivot)
+#summary(dis_t)
+
+dis_lm <- lm(formula = Users ~ Years + Disability, data = all_dis_pivot)
+summary(dis_lm)
+```
+
+
+```{r}
+png("age_data.png", height=50 * nrow(age_data), width=50 * ncol(age_data), bg="white")
+p<-tableGrob(age_data)
+grid.arrange(p)
+dev.off()
+
+png("sex_data.png", height=50 * nrow(age_data), width=50 * ncol(age_data), bg="white")
+p<-tableGrob(sex_data)
+grid.arrange(p)
+dev.off()
+
+png("age_sex.png", height=55 * nrow(age_data), width=80 * ncol(age_data), bg="white")
+p<-tableGrob(age_sex)
+grid.arrange(p)
+dev.off()
+
+png("eco_data.png", height=55 * nrow(age_data), width=80 * ncol(age_data), bg="white")
+p<-tableGrob(eco_data)
+grid.arrange(p)
+dev.off()
+
+png("ethnic_data.png", height=60 * nrow(age_data), width=80 * ncol(age_data), bg="white")
+p<-tableGrob(ethnic_data)
+grid.arrange(p)
+dev.off()
+
+png("disability_data.png", height=55 * nrow(age_data), width=80 * ncol(age_data), bg="white")
+p<-tableGrob(disability_age)
+grid.arrange(p)
+dev.off()
+
+png("age_pivot.png", height=55 * nrow(age_pivot), width=80 * ncol(age_pivot), bg="white")
+p<-tableGrob(age_pivot)
+grid.arrange(p)
+dev.off()
+
+```
+
+6. Age & Sex Data
+
+
+```{r}
+all_sex <- age_sex[1:2,] %>% select(!AgeGroup)
+all_sex
+all_sex_pivot <- all_sex %>% pivot_longer(-Sex,names_to = "Years", values_to = "Users")
+all_sex_pivot
+agesex_data <- tail(age_sex,-2)
+agesex_data
+```
+
+```{r}
+agesex_pivot <- gather(agesex_data, "Years", "Users", 3:10)
+agesex_pivot
+
+```
+
+```{r}
+agesex_male <- agesex_data %>% filter(Sex=="Men") %>% select(!Sex) %>% pivot_longer(-AgeGroup, names_to= "Years", values_to = "Users")
+agesex_male
+
+agesex_female <- agesex_data %>% filter(Sex == "Women") %>% select(!Sex) %>%
+  pivot_longer(-AgeGroup, names_to = "Years", values_to = "Users")
+agesex_female
+```
+```{r}
+men<- ggplot(agesex_male,aes(x=Years,y=Users,fill=AgeGroup)) +geom_col(position="dodge2") + labs(title="Male Users",x="Years", y = "No of Users", fill = "Age Group") + theme(legend.position = "top")
+women<- ggplot(agesex_female,aes(x=Years,y=Users,fill=AgeGroup)) +geom_col(position="dodge2") + labs(title = "Female Users",x="Years", y = "No of Users", fill = "Age Group") + theme(legend.position = "top")
+ggsave("men_pie.png", men, width = 15, height = 10)
+ggsave("women_pie.png", women, width = 15, height = 10)
+men
+women
+```
+
+```{r}
+box <- ggplot(agesex_pivot,aes(x=Users, y = AgeGroup, fill=Sex)) + geom_boxplot() + 
+  labs(x=NULL) + theme(legend.position = "top")
+ggsave("agesex_box.png", box, width = 15, height = 10)
+box
+```
+
+```{r}
+both <- ggplot(agesex_pivot,aes(x=Years,y=Users,fill=Sex)) +geom_col(position="dodge2") + labs(title="Both Users",x="Years", y = "No of Users", fill = "Age Group") + theme(legend.position = "top") + facet_wrap(~AgeGroup)
+ggsave("both_bar.png", both, width = 15, height = 10)
+both
+```
+
+```{r}
+t.test(data = all_sex_pivot, Users ~ Sex)
+
+#dis_t <- t.test(Users ~ Disability, data = dis_pivot)
+#summary(dis_t)
+
+ags_lm <- lm(formula = Users ~ Years + Sex, data = all_sex_pivot)
+summary(ags_lm)
+
+```
+```{r}
+ags_lm_age <- lm(formula = Users ~ AgeGroup + Sex, data = agesex_pivot)
+summary(ags_lm_age)
+
+```
+
+
+```{r}
+ags_aov <- aov(Users ~ AgeGroup + Sex, data = agesex_pivot)
+summary(ags_aov)
+
+
+```
